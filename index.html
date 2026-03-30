@@ -82,7 +82,6 @@
     .btn-danger{background:#fee2e2;color:#991b1b}
     .btn-outline{background:#fff;color:#0f172a;border:1px solid var(--line)}
     .btn:active{transform:translateY(1px)}
-    .mini-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
     .helper{font-size:.82rem;color:var(--muted);line-height:1.45}
     .error-box,.success-box,.info-box{margin-top:12px;padding:12px 14px;border-radius:14px;font-size:.92rem;display:none}
     .error-box{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
@@ -159,13 +158,12 @@
         <button id="btnEntrar" class="btn btn-primary" type="button">Entrar</button>
       </div>
 
-      <div class="mini-actions">
-        <button id="btnCadastrar" class="btn btn-secondary" type="button">Criar conta</button>
-        <button id="btnResetar" class="btn btn-outline" type="button">Esqueci a senha</button>
+      <div class="helper" style="margin-top:14px">
+        O acesso é controlado somente por usuários já cadastrados no Firebase Authentication. O cadastro público e a recuperação de senha foram removidos desta tela.
       </div>
 
-      <div class="helper" style="margin-top:14px">
-        O cadastro cria usuários como <strong>vendedor</strong> por padrão. Para tornar alguém <strong>admin</strong>, altere o campo <strong>role</strong> na coleção <strong>usuarios</strong> para <strong>admin</strong>. O admin fica com comissão zerada.
+      <div class="helper" style="margin-top:10px">
+        O usuário é criado como <strong>vendedor</strong> ou <strong>admin</strong> pela coleção <strong>usuarios</strong>. O admin fica com comissão zerada.
       </div>
 
       <div id="loginError" class="error-box"></div>
@@ -232,23 +230,18 @@
               <label for="produtoNome">Camiseta</label>
               <select id="produtoNome" class="select">
                 <option value="">Selecione</option>
-                <option value="Brasil">Brasil</option>
               </select>
             </div>
             <div class="field">
               <label for="produtoTipo">Tipo</label>
               <select id="produtoTipo" class="select">
                 <option value="">Selecione</option>
-                <option value="Nacional">Nacional</option>
-                <option value="Tailandesa">Tailandesa</option>
               </select>
             </div>
             <div class="field">
               <label for="produtoCor">Cor</label>
               <select id="produtoCor" class="select">
                 <option value="">Selecione</option>
-                <option value="Amarela">Amarela</option>
-                <option value="Azul">Azul</option>
               </select>
             </div>
           </div>
@@ -258,10 +251,6 @@
               <label for="produtoTamanho">Tamanho</label>
               <select id="produtoTamanho" class="select">
                 <option value="">Selecione</option>
-                <option value="P">P</option>
-                <option value="M">M</option>
-                <option value="G">G</option>
-                <option value="GG">GG</option>
               </select>
             </div>
             <div class="field">
@@ -277,14 +266,21 @@
           <div class="price-preview" style="margin-top:14px">
             <div class="price-line"><span>Perfil do usuário</span><strong id="previewPerfil">-</strong></div>
             <div class="price-line"><span>Valor da venda</span><strong id="previewVenda">R$ 0,00</strong></div>
-            <div class="price-line"><span>Comissão aplicada</span><strong id="previewComissao">R$ 0,00</strong></div>
+            <div class="price-line"><span>Comissão aplicada</span><strong id="previewComissao">R$ 0,00 • Sem estoque disponível</strong></div>
           </div>
 
-          <div class="mini-actions" style="margin-top:14px">
-            <button id="btnRegistrarVenda" class="btn btn-primary" type="button">Registrar venda</button>
+          <div style="margin-top:12px" class="helper">
+            Só aparecem nas opções os itens que realmente existem no estoque e que possuem saldo maior que zero.
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
+            <button id="btnRegistrarVenda" class="btn btn-primary" type="button" disabled>Registrar venda</button>
             <button id="btnLimparVenda" class="btn btn-outline" type="button">Limpar</button>
           </div>
-          <div class="helper" style="margin-top:12px">Ao registrar, o sistema procura o item no estoque e subtrai 1 unidade. Se não houver saldo, a venda é bloqueada.</div>
+
+          <div class="helper" style="margin-top:12px">
+            Ao registrar, o sistema procura o item exato no estoque e subtrai 1 unidade. Se não houver saldo ou o item não existir, a venda é bloqueada.
+          </div>
           <div id="saleFeedback" class="success-box"></div>
           <div id="saleError" class="error-box"></div>
         </div>
@@ -373,7 +369,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
     import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -395,8 +391,6 @@
       loginEmail: document.getElementById('loginEmail'),
       loginSenha: document.getElementById('loginSenha'),
       btnEntrar: document.getElementById('btnEntrar'),
-      btnCadastrar: document.getElementById('btnCadastrar'),
-      btnResetar: document.getElementById('btnResetar'),
       btnSairTop: document.getElementById('btnSairTop'),
       loginError: document.getElementById('loginError'),
       loginSuccess: document.getElementById('loginSuccess'),
@@ -442,24 +436,185 @@
     let currentProfile = { role: 'vendedor', nome: '' };
     let stockCache = [];
     let salesCache = [];
+    let availableSaleItems = [];
 
-    function currencyBR(v){ return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v || 0)); }
-    function onlyDigits(v){ return String(v || '').replace(/\D/g,''); }
-    function formatWhatsapp(v){ const d = onlyDigits(v).slice(0,11); if(d.length <= 2) return d; if(d.length <= 7) return `(${d.slice(0,2)}) ${d.slice(2)}`; return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7,11)}`; }
-    function formatCurrencyInput(value){ const digits = onlyDigits(value); if(!digits) return ''; const number = Number(digits) / 100; return number.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-    function parseCurrencyBR(value){ if(typeof value === 'number') return value; const normalized = String(value || '').replace(/\./g,'').replace(',', '.').replace(/[^0-9.\-]/g,''); return Number(normalized || 0); }
-    function showBox(el, msg){ el.textContent = msg; el.style.display = 'block'; }
-    function hideBox(el){ el.textContent = ''; el.style.display = 'none'; }
-    function clearMessages(){ [els.loginError, els.loginSuccess, els.loginInfo, els.saleFeedback, els.saleError, els.stockFeedback, els.stockError].forEach(hideBox); }
-    function getRoleCommissionRate(){ return currentProfile.role === 'admin' ? 0 : 0.10; }
-    function updateSalePreview(){ const valor = parseCurrencyBR(els.valorVenda.value); const comissao = valor * getRoleCommissionRate(); els.previewPerfil.textContent = currentProfile.role || 'vendedor'; els.previewVenda.textContent = currencyBR(valor); els.previewComissao.textContent = currencyBR(comissao); }
-    function makeStockId({produto='Brasil', tipo, cor, tamanho}){ return [produto, tipo, cor, tamanho].join('__').toLowerCase(); }
+    function currencyBR(v){
+      return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v || 0));
+    }
+
+    function onlyDigits(v){
+      return String(v || '').replace(/\D/g,'');
+    }
+
+    function formatWhatsapp(v){
+      const d = onlyDigits(v).slice(0,11);
+      if(d.length <= 2) return d;
+      if(d.length <= 7) return `(${d.slice(0,2)}) ${d.slice(2)}`;
+      return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7,11)}`;
+    }
+
+    function formatCurrencyInput(value){
+      const digits = onlyDigits(value);
+      if(!digits) return '';
+      const number = Number(digits) / 100;
+      return number.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    }
+
+    function parseCurrencyBR(value){
+      if(typeof value === 'number') return value;
+      const normalized = String(value || '').replace(/\./g,'').replace(',', '.').replace(/[^0-9.\-]/g,'');
+      return Number(normalized || 0);
+    }
+
+    function showBox(el, msg){
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+
+    function hideBox(el){
+      el.textContent = '';
+      el.style.display = 'none';
+    }
+
+    function clearMessages(){
+      [els.loginError, els.loginSuccess, els.loginInfo, els.saleFeedback, els.saleError, els.stockFeedback, els.stockError].forEach(hideBox);
+    }
+
+    function getRoleCommissionRate(){
+      return currentProfile.role === 'admin' ? 0 : 0.10;
+    }
+
+    function makeStockId({produto='Brasil', tipo, cor, tamanho}){
+      return [produto, tipo, cor, tamanho].join('__').toLowerCase();
+    }
+
+    function escapeHtml(value){
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function getAvailableSaleItems(){
+      return stockCache
+        .filter(item =>
+          String(item.produto || '').trim() &&
+          String(item.tipo || '').trim() &&
+          String(item.cor || '').trim() &&
+          String(item.tamanho || '').trim() &&
+          Number(item.quantidade || 0) > 0
+        )
+        .map(item => ({
+          produto: item.produto,
+          tipo: item.tipo,
+          cor: item.cor,
+          tamanho: item.tamanho,
+          quantidade: Number(item.quantidade || 0)
+        }));
+    }
+
+    function fillSelect(selectEl, values, placeholder){
+      const current = selectEl.value;
+      selectEl.innerHTML = `<option value="">${placeholder}</option>` + values
+        .map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`)
+        .join('');
+
+      if(values.includes(current)){
+        selectEl.value = current;
+      }else{
+        selectEl.value = '';
+      }
+    }
+
+    function getSelectedStockItem(){
+      return availableSaleItems.find(i =>
+        i.produto === els.produtoNome.value &&
+        i.tipo === els.produtoTipo.value &&
+        i.cor === els.produtoCor.value &&
+        i.tamanho === els.produtoTamanho.value
+      ) || null;
+    }
+
+    function updateSalePreview(){
+      const valor = parseCurrencyBR(els.valorVenda.value);
+      const comissao = valor * getRoleCommissionRate();
+      const selectedItem = getSelectedStockItem();
+
+      els.previewPerfil.textContent = currentProfile.role || 'vendedor';
+      els.previewVenda.textContent = currencyBR(valor);
+
+      if(selectedItem){
+        els.previewComissao.textContent = `${currencyBR(comissao)} • Estoque: ${selectedItem.quantidade}`;
+      }else{
+        els.previewComissao.textContent = `${currencyBR(comissao)} • Sem estoque disponível`;
+      }
+    }
+
+    function refreshSaleSelectors(){
+      availableSaleItems = getAvailableSaleItems();
+
+      const currentProduto = els.produtoNome.value;
+      const currentTipo = els.produtoTipo.value;
+      const currentCor = els.produtoCor.value;
+      const currentTamanho = els.produtoTamanho.value;
+
+      const produtos = [...new Set(availableSaleItems.map(i => i.produto))].sort();
+      fillSelect(els.produtoNome, produtos, 'Selecione');
+
+      if(produtos.includes(currentProduto)) els.produtoNome.value = currentProduto;
+
+      const filteredByProduto = availableSaleItems.filter(i =>
+        !els.produtoNome.value || i.produto === els.produtoNome.value
+      );
+      const tipos = [...new Set(filteredByProduto.map(i => i.tipo))].sort();
+      fillSelect(els.produtoTipo, tipos, 'Selecione');
+
+      if(tipos.includes(currentTipo)) els.produtoTipo.value = currentTipo;
+
+      const filteredByTipo = filteredByProduto.filter(i =>
+        !els.produtoTipo.value || i.tipo === els.produtoTipo.value
+      );
+      const cores = [...new Set(filteredByTipo.map(i => i.cor))].sort();
+      fillSelect(els.produtoCor, cores, 'Selecione');
+
+      if(cores.includes(currentCor)) els.produtoCor.value = currentCor;
+
+      const filteredByCor = filteredByTipo.filter(i =>
+        !els.produtoCor.value || i.cor === els.produtoCor.value
+      );
+      const tamanhos = [...new Set(filteredByCor.map(i => i.tamanho))].sort();
+      fillSelect(els.produtoTamanho, tamanhos, 'Selecione');
+
+      if(tamanhos.includes(currentTamanho)) els.produtoTamanho.value = currentTamanho;
+
+      const matched = getSelectedStockItem();
+
+      const formCompleto =
+        els.produtoNome.value &&
+        els.produtoTipo.value &&
+        els.produtoCor.value &&
+        els.produtoTamanho.value;
+
+      els.btnRegistrarVenda.disabled = !formCompleto || !matched || matched.quantidade <= 0;
+      updateSalePreview();
+    }
 
     async function getOrCreateUserProfile(user){
       const ref = doc(db, 'usuarios', user.uid);
       const snap = await getDoc(ref);
+
       if(snap.exists()) return snap.data();
-      const profile = { uid:user.uid, email:user.email, nome:user.email.split('@')[0], role:'vendedor', createdAt:serverTimestamp() };
+
+      const profile = {
+        uid: user.uid,
+        email: user.email,
+        nome: user.email.split('@')[0],
+        role: 'vendedor',
+        createdAt: serverTimestamp()
+      };
+
       await setDoc(ref, profile);
       return profile;
     }
@@ -467,16 +622,16 @@
     function traduzErro(error){
       const code = error?.code || '';
       if(error?.message && !code) return error.message;
+
       const map = {
         'auth/invalid-email':'E-mail inválido.',
         'auth/missing-password':'Informe a senha.',
         'auth/invalid-credential':'E-mail ou senha incorretos.',
-        'auth/email-already-in-use':'Este e-mail já está em uso.',
-        'auth/weak-password':'Senha fraca. Use pelo menos 6 caracteres.',
         'auth/user-not-found':'Usuário não encontrado.',
         'auth/network-request-failed':'Falha de conexão. Verifique a internet.',
         'permission-denied':'Sem permissão para esta ação.'
       };
+
       return map[code] || 'Não foi possível concluir a ação.';
     }
 
@@ -485,52 +640,56 @@
       try{
         const email = els.loginEmail.value.trim();
         const senha = els.loginSenha.value.trim();
+
         if(!email || !senha) throw new Error('Informe e-mail e senha.');
         await signInWithEmailAndPassword(auth, email, senha);
-      }catch(error){ showBox(els.loginError, traduzErro(error)); }
+      }catch(error){
+        showBox(els.loginError, traduzErro(error));
+      }
     }
 
-    async function createAccount(){
-      clearMessages();
-      try{
-        const email = els.loginEmail.value.trim();
-        const senha = els.loginSenha.value.trim();
-        if(!email || !senha) throw new Error('Informe e-mail e senha para criar a conta.');
-        if(senha.length < 6) throw new Error('A senha deve ter pelo menos 6 caracteres.');
-        await createUserWithEmailAndPassword(auth, email, senha);
-        showBox(els.loginSuccess, 'Conta criada com sucesso.');
-      }catch(error){ showBox(els.loginError, traduzErro(error)); }
+    async function logout(){
+      await signOut(auth);
     }
-
-    async function resetPassword(){
-      clearMessages();
-      try{
-        const email = els.loginEmail.value.trim();
-        if(!email) throw new Error('Informe o e-mail para recuperar a senha.');
-        await sendPasswordResetEmail(auth, email);
-        showBox(els.loginInfo, 'E-mail de redefinição enviado.');
-      }catch(error){ showBox(els.loginError, traduzErro(error)); }
-    }
-
-    async function logout(){ await signOut(auth); }
 
     async function saveStockItem(){
-      hideBox(els.stockFeedback); hideBox(els.stockError);
+      hideBox(els.stockFeedback);
+      hideBox(els.stockError);
+
       try{
-        const payload = { produto:'Brasil', tipo:els.estoqueTipo.value, cor:els.estoqueCor.value, tamanho:els.estoqueTamanho.value };
+        const payload = {
+          produto: 'Brasil',
+          tipo: els.estoqueTipo.value,
+          cor: els.estoqueCor.value,
+          tamanho: els.estoqueTamanho.value
+        };
+
         const qtd = Number(els.estoqueQtd.value || 0);
+
         if(!payload.tipo || !payload.cor || !payload.tamanho) throw new Error('Preencha tipo, cor e tamanho.');
         if(qtd <= 0) throw new Error('Informe uma quantidade válida.');
+
         const id = makeStockId(payload);
-        await setDoc(doc(db, 'estoque', id), { ...payload, quantidade:qtd, updatedAt:serverTimestamp(), updatedBy:currentUser.email }, { merge:true });
+
+        await setDoc(doc(db, 'estoque', id), {
+          ...payload,
+          quantidade: qtd,
+          updatedAt: serverTimestamp(),
+          updatedBy: currentUser.email
+        }, { merge:true });
+
         els.estoqueQtd.value = '';
         showBox(els.stockFeedback, 'Item salvo no estoque.');
         await loadStock();
-      }catch(error){ showBox(els.stockError, traduzErro(error)); }
+      }catch(error){
+        showBox(els.stockError, traduzErro(error));
+      }
     }
 
     async function seedInitialStock(){
-      hideBox(els.stockFeedback); hideBox(els.stockError);
+      hideBox(els.stockFeedback);
+      hideBox(els.stockError);
+
       try{
         const base = [
           { produto:'Brasil', tipo:'Nacional', cor:'Amarela', tamanho:'P', quantidade:5 },
@@ -546,22 +705,51 @@
           { produto:'Brasil', tipo:'Tailandesa', cor:'Azul', tamanho:'G', quantidade:10 },
           { produto:'Brasil', tipo:'Tailandesa', cor:'Azul', tamanho:'GG', quantidade:5 }
         ];
+
         for (const item of base){
-          await setDoc(doc(db, 'estoque', makeStockId(item)), { ...item, updatedAt:serverTimestamp(), updatedBy:currentUser.email }, { merge:true });
+          await setDoc(doc(db, 'estoque', makeStockId(item)), {
+            ...item,
+            updatedAt: serverTimestamp(),
+            updatedBy: currentUser.email
+          }, { merge:true });
         }
+
         showBox(els.stockFeedback, 'Estoque inicial lançado.');
         await loadStock();
-      }catch(error){ showBox(els.stockError, traduzErro(error)); }
+      }catch(error){
+        showBox(els.stockError, traduzErro(error));
+      }
     }
 
     function renderStock(){
       const termo = els.filtroEstoque.value.trim().toLowerCase();
-      const items = stockCache.filter(i => [i.produto, i.tipo, i.cor, i.tamanho].join(' ').toLowerCase().includes(termo)).sort((a,b) => a.tipo.localeCompare(b.tipo) || a.cor.localeCompare(b.cor) || a.tamanho.localeCompare(b.tamanho));
-      if(!items.length){ els.stockList.innerHTML = '<div class="empty">Nenhum item de estoque encontrado.</div>'; return; }
+      const items = stockCache
+        .filter(i => [i.produto, i.tipo, i.cor, i.tamanho].join(' ').toLowerCase().includes(termo))
+        .sort((a,b) => a.tipo.localeCompare(b.tipo) || a.cor.localeCompare(b.cor) || a.tamanho.localeCompare(b.tamanho));
+
+      if(!items.length){
+        els.stockList.innerHTML = '<div class="empty">Nenhum item de estoque encontrado.</div>';
+        return;
+      }
+
       els.stockList.innerHTML = items.map(item => {
         const pillColor = item.cor === 'Amarela' ? 'pill-yellow' : 'pill-blue';
         const low = Number(item.quantidade || 0) <= 2;
-        return `<div class="stock-item"><div class="stock-top"><div><div class="stock-name">${item.produto} • ${item.tipo}</div><div class="inline-meta"><span class="pill ${pillColor}">${item.cor}</span><span class="pill pill-gray">Tam ${item.tamanho}</span></div></div><span class="pill ${low ? 'pill-red' : 'pill-green'}">Qtd ${item.quantidade || 0}</span></div></div>`;
+
+        return `
+          <div class="stock-item">
+            <div class="stock-top">
+              <div>
+                <div class="stock-name">${item.produto} • ${item.tipo}</div>
+                <div class="inline-meta">
+                  <span class="pill ${pillColor}">${item.cor}</span>
+                  <span class="pill pill-gray">Tam ${item.tamanho}</span>
+                </div>
+              </div>
+              <span class="pill ${low ? 'pill-red' : 'pill-green'}">Qtd ${item.quantidade || 0}</span>
+            </div>
+          </div>
+        `;
       }).join('');
     }
 
@@ -569,11 +757,14 @@
       const snap = await getDocs(collection(db, 'estoque'));
       stockCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
       renderStock();
+      refreshSaleSelectors();
       els.kpiEstoqueTotal.textContent = stockCache.reduce((sum, item) => sum + Number(item.quantidade || 0), 0);
     }
 
     async function registerSale(){
-      hideBox(els.saleFeedback); hideBox(els.saleError);
+      hideBox(els.saleFeedback);
+      hideBox(els.saleError);
+
       try{
         const cliente = els.clienteNome.value.trim();
         const whatsapp = formatWhatsapp(els.clienteWhatsapp.value);
@@ -583,21 +774,34 @@
         const tamanho = els.produtoTamanho.value;
         const valorVenda = parseCurrencyBR(els.valorVenda.value);
         const observacoes = els.observacoesVenda.value.trim();
+
         if(!cliente) throw new Error('Informe o nome do cliente.');
         if(onlyDigits(whatsapp).length < 10) throw new Error('Informe um WhatsApp válido.');
-        if(!produto || !tipo || !cor || !tamanho) throw new Error('Preencha camiseta, tipo, cor e tamanho.');
+        if(!produto || !tipo || !cor || !tamanho) throw new Error('Selecione um item válido do estoque.');
         if(valorVenda <= 0) throw new Error('Informe um preço de venda válido.');
+
+        const itemSelecionado = getSelectedStockItem();
+        if(!itemSelecionado) throw new Error('Só é possível vender itens existentes no estoque e com saldo disponível.');
 
         const stockId = makeStockId({ produto, tipo, cor, tamanho });
         const stockRef = doc(db, 'estoque', stockId);
         const stockSnap = await getDoc(stockRef);
+
         if(!stockSnap.exists()) throw new Error('Este item não existe no estoque.');
         const estoqueAtual = Number(stockSnap.data().quantidade || 0);
         if(estoqueAtual <= 0) throw new Error('Sem estoque disponível para esta camisa.');
 
         const comissao = Number((valorVenda * getRoleCommissionRate()).toFixed(2));
+
         await addDoc(collection(db, 'vendas'), {
-          cliente, whatsapp, produto, tipo, cor, tamanho, valorVenda, comissao,
+          cliente,
+          whatsapp,
+          produto,
+          tipo,
+          cor,
+          tamanho,
+          valorVenda,
+          comissao,
           vendedorEmail: currentUser.email,
           vendedorNome: currentProfile.nome || currentUser.email.split('@')[0],
           vendedorRole: currentProfile.role,
@@ -606,42 +810,125 @@
           createdAtMs: Date.now()
         });
 
-        await updateDoc(stockRef, { quantidade: estoqueAtual - 1, updatedAt: serverTimestamp(), updatedBy: currentUser.email });
+        await updateDoc(stockRef, {
+          quantidade: estoqueAtual - 1,
+          updatedAt: serverTimestamp(),
+          updatedBy: currentUser.email
+        });
+
         clearSaleForm();
         showBox(els.saleFeedback, 'Venda registrada com sucesso e estoque baixado.');
         await Promise.all([loadStock(), loadSales()]);
-      }catch(error){ showBox(els.saleError, traduzErro(error)); }
+      }catch(error){
+        showBox(els.saleError, traduzErro(error));
+      }
     }
 
-    function clearSaleForm(){ els.clienteNome.value=''; els.clienteWhatsapp.value=''; els.produtoNome.value=''; els.produtoTipo.value=''; els.produtoCor.value=''; els.produtoTamanho.value=''; els.valorVenda.value=''; els.observacoesVenda.value=''; updateSalePreview(); }
-    function dateLabel(ms){ return ms ? new Date(ms).toLocaleString('pt-BR') : '-'; }
+    function clearSaleForm(){
+      els.clienteNome.value = '';
+      els.clienteWhatsapp.value = '';
+      els.produtoNome.value = '';
+      els.produtoTipo.value = '';
+      els.produtoCor.value = '';
+      els.produtoTamanho.value = '';
+      els.valorVenda.value = '';
+      els.observacoesVenda.value = '';
+      refreshSaleSelectors();
+    }
+
+    function dateLabel(ms){
+      return ms ? new Date(ms).toLocaleString('pt-BR') : '-';
+    }
 
     function renderSales(){
       const termo = els.filtroVendas.value.trim().toLowerCase();
-      const items = salesCache.filter(v => [v.cliente, v.vendedorNome, v.vendedorEmail, v.cor, v.tipo, v.tamanho, v.produto].join(' ').toLowerCase().includes(termo)).sort((a,b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
-      if(!items.length){ els.salesList.innerHTML = '<div class="empty">Nenhuma venda encontrada.</div>'; return; }
-      els.salesList.innerHTML = items.map(v => `<div class="sale-item"><div class="sale-top"><div><div class="sale-name">${v.cliente}</div><div class="muted">${dateLabel(v.createdAtMs)}</div></div><span class="pill ${v.vendedorRole === 'admin' ? 'pill-gray' : 'pill-green'}">${v.vendedorRole}</span></div><div class="inline-meta"><span class="meta">${v.produto}</span><span class="meta">${v.tipo}</span><span class="meta">${v.cor}</span><span class="meta">Tam ${v.tamanho}</span></div><div class="inline-meta"><span class="meta">Venda ${currencyBR(v.valorVenda)}</span><span class="meta">Comissão ${currencyBR(v.comissao)}</span></div><div class="helper" style="margin-top:8px">WhatsApp: ${v.whatsapp} • Vendedor: ${v.vendedorNome} (${v.vendedorEmail})</div>${v.observacoes ? `<div class="helper" style="margin-top:6px">Obs.: ${v.observacoes}</div>` : ''}</div>`).join('');
+      const items = salesCache
+        .filter(v => [v.cliente, v.vendedorNome, v.vendedorEmail, v.cor, v.tipo, v.tamanho, v.produto].join(' ').toLowerCase().includes(termo))
+        .sort((a,b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
+
+      if(!items.length){
+        els.salesList.innerHTML = '<div class="empty">Nenhuma venda encontrada.</div>';
+        return;
+      }
+
+      els.salesList.innerHTML = items.map(v => `
+        <div class="sale-item">
+          <div class="sale-top">
+            <div>
+              <div class="sale-name">${v.cliente}</div>
+              <div class="muted">${dateLabel(v.createdAtMs)}</div>
+            </div>
+            <span class="pill ${v.vendedorRole === 'admin' ? 'pill-gray' : 'pill-green'}">${v.vendedorRole}</span>
+          </div>
+          <div class="inline-meta">
+            <span class="meta">${v.produto}</span>
+            <span class="meta">${v.tipo}</span>
+            <span class="meta">${v.cor}</span>
+            <span class="meta">Tam ${v.tamanho}</span>
+          </div>
+          <div class="inline-meta">
+            <span class="meta">Venda ${currencyBR(v.valorVenda)}</span>
+            <span class="meta">Comissão ${currencyBR(v.comissao)}</span>
+          </div>
+          <div class="helper" style="margin-top:8px">WhatsApp: ${v.whatsapp} • Vendedor: ${v.vendedorNome} (${v.vendedorEmail})</div>
+          ${v.observacoes ? `<div class="helper" style="margin-top:6px">Obs.: ${v.observacoes}</div>` : ''}
+        </div>
+      `).join('');
     }
 
     function renderSummary(){
       const map = new Map();
+
       for(const v of salesCache){
         const key = v.vendedorEmail || 'sem-email';
-        if(!map.has(key)) map.set(key, { vendedorNome:v.vendedorNome || key, vendedorEmail:v.vendedorEmail || key, vendedorRole:v.vendedorRole || 'vendedor', quantidade:0, totalVendas:0, totalComissao:0 });
+
+        if(!map.has(key)){
+          map.set(key, {
+            vendedorNome: v.vendedorNome || key,
+            vendedorEmail: v.vendedorEmail || key,
+            vendedorRole: v.vendedorRole || 'vendedor',
+            quantidade: 0,
+            totalVendas: 0,
+            totalComissao: 0
+          });
+        }
+
         const item = map.get(key);
         item.quantidade += 1;
         item.totalVendas += Number(v.valorVenda || 0);
         item.totalComissao += Number(v.comissao || 0);
       }
+
       const lista = Array.from(map.values()).sort((a,b) => b.totalVendas - a.totalVendas);
-      if(!lista.length){ els.sellerSummary.innerHTML = '<div class="empty">Ainda não há vendas para resumir.</div>'; return; }
-      els.sellerSummary.innerHTML = lista.map(item => `<div class="seller-item"><div class="seller-top"><div><div class="seller-name">${item.vendedorNome}</div><div class="muted">${item.vendedorEmail}</div></div><span class="pill ${item.vendedorRole === 'admin' ? 'pill-gray' : 'pill-green'}">${item.vendedorRole}</span></div><div class="inline-meta"><span class="meta">Vendas ${item.quantidade}</span><span class="meta">Total ${currencyBR(item.totalVendas)}</span><span class="meta">Comissão ${currencyBR(item.totalComissao)}</span></div></div>`).join('');
+
+      if(!lista.length){
+        els.sellerSummary.innerHTML = '<div class="empty">Ainda não há vendas para resumir.</div>';
+        return;
+      }
+
+      els.sellerSummary.innerHTML = lista.map(item => `
+        <div class="seller-item">
+          <div class="seller-top">
+            <div>
+              <div class="seller-name">${item.vendedorNome}</div>
+              <div class="muted">${item.vendedorEmail}</div>
+            </div>
+            <span class="pill ${item.vendedorRole === 'admin' ? 'pill-gray' : 'pill-green'}">${item.vendedorRole}</span>
+          </div>
+          <div class="inline-meta">
+            <span class="meta">Vendas ${item.quantidade}</span>
+            <span class="meta">Total ${currencyBR(item.totalVendas)}</span>
+            <span class="meta">Comissão ${currencyBR(item.totalComissao)}</span>
+          </div>
+        </div>
+      `).join('');
     }
 
     function updateKPIs(){
       const hoje = new Date();
       const inicioHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).getTime();
       const vendasHoje = salesCache.filter(v => Number(v.createdAtMs || 0) >= inicioHoje);
+
       els.kpiVendasHoje.textContent = vendasHoje.length;
       els.kpiFaturamentoHoje.textContent = currencyBR(vendasHoje.reduce((s,v) => s + Number(v.valorVenda || 0), 0));
       els.kpiComissaoHoje.textContent = currencyBR(vendasHoje.reduce((s,v) => s + Number(v.comissao || 0), 0));
@@ -658,32 +945,72 @@
     function exportPDF(){
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF({orientation:'p', unit:'pt', format:'a4'});
-      const vendas = [...salesCache].sort((a,b) => (a.vendedorNome || '').localeCompare(b.vendedorNome || '') || (a.createdAtMs || 0) - (b.createdAtMs || 0));
-      pdf.setFont('helvetica','bold'); pdf.setFontSize(16); pdf.text('BrasilZil - Relatório de Vendas', 40, 40);
-      pdf.setFont('helvetica','normal'); pdf.setFontSize(10); pdf.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 40, 58);
+      const vendas = [...salesCache].sort((a,b) =>
+        (a.vendedorNome || '').localeCompare(b.vendedorNome || '') || (a.createdAtMs || 0) - (b.createdAtMs || 0)
+      );
+
+      pdf.setFont('helvetica','bold');
+      pdf.setFontSize(16);
+      pdf.text('BrasilZil - Relatório de Vendas', 40, 40);
+
+      pdf.setFont('helvetica','normal');
+      pdf.setFontSize(10);
+      pdf.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 40, 58);
+
       pdf.autoTable({
         startY:78,
         head:[[ 'Camiseta', 'Tam', 'Cor', 'Valor venda', 'Comissão', 'Vendedor' ]],
-        body:vendas.map(v => [`${v.produto} ${v.tipo}`, v.tamanho, v.cor, currencyBR(v.valorVenda), currencyBR(v.comissao), v.vendedorNome || v.vendedorEmail || '-']),
+        body:vendas.map(v => [
+          `${v.produto} ${v.tipo}`,
+          v.tamanho,
+          v.cor,
+          currencyBR(v.valorVenda),
+          currencyBR(v.comissao),
+          v.vendedorNome || v.vendedorEmail || '-'
+        ]),
         styles:{ fontSize:9, cellPadding:6 },
         headStyles:{ fillColor:[29,78,216] }
       });
+
       const resumoMap = new Map();
+
       for(const v of vendas){
         const key = v.vendedorEmail || v.vendedorNome || 'sem-vendedor';
-        if(!resumoMap.has(key)) resumoMap.set(key, { vendedor:v.vendedorNome || v.vendedorEmail || '-', quantidade:0, total:0, comissao:0 });
+
+        if(!resumoMap.has(key)){
+          resumoMap.set(key, {
+            vendedor:v.vendedorNome || v.vendedorEmail || '-',
+            quantidade:0,
+            total:0,
+            comissao:0
+          });
+        }
+
         const item = resumoMap.get(key);
-        item.quantidade += 1; item.total += Number(v.valorVenda || 0); item.comissao += Number(v.comissao || 0);
+        item.quantidade += 1;
+        item.total += Number(v.valorVenda || 0);
+        item.comissao += Number(v.comissao || 0);
       }
+
       const finalY = pdf.lastAutoTable ? pdf.lastAutoTable.finalY + 24 : 420;
-      pdf.setFont('helvetica','bold'); pdf.setFontSize(13); pdf.text('Resumo por pessoa', 40, finalY);
+
+      pdf.setFont('helvetica','bold');
+      pdf.setFontSize(13);
+      pdf.text('Resumo por pessoa', 40, finalY);
+
       pdf.autoTable({
         startY: finalY + 10,
         head:[[ 'Vendedor', 'Qtd vendas', 'Total vendido', 'Comissão' ]],
-        body:Array.from(resumoMap.values()).map(r => [r.vendedor, String(r.quantidade), currencyBR(r.total), currencyBR(r.comissao)]),
+        body:Array.from(resumoMap.values()).map(r => [
+          r.vendedor,
+          String(r.quantidade),
+          currencyBR(r.total),
+          currencyBR(r.comissao)
+        ]),
         styles:{ fontSize:9, cellPadding:6 },
         headStyles:{ fillColor:[21,128,61] }
       });
+
       pdf.save(`relatorio_vendas_brasilzil_${Date.now()}.pdf`);
     }
 
@@ -695,36 +1022,68 @@
 
     function bindEvents(){
       els.btnEntrar.addEventListener('click', login);
-      els.btnCadastrar.addEventListener('click', createAccount);
-      els.btnResetar.addEventListener('click', resetPassword);
       els.btnSairTop.addEventListener('click', logout);
       els.btnRegistrarVenda.addEventListener('click', registerSale);
       els.btnLimparVenda.addEventListener('click', clearSaleForm);
       els.btnSalvarEstoque.addEventListener('click', saveStockItem);
       els.btnSeedEstoque.addEventListener('click', seedInitialStock);
       els.btnExportarPDF.addEventListener('click', exportPDF);
-      els.valorVenda.addEventListener('input', e => { e.target.value = formatCurrencyInput(e.target.value); updateSalePreview(); try{ e.target.setSelectionRange(e.target.value.length, e.target.value.length); }catch{} });
-      els.clienteWhatsapp.addEventListener('input', e => { e.target.value = formatWhatsapp(e.target.value); });
+
+      els.valorVenda.addEventListener('input', e => {
+        e.target.value = formatCurrencyInput(e.target.value);
+        updateSalePreview();
+        try{
+          e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+        }catch{}
+      });
+
+      els.clienteWhatsapp.addEventListener('input', e => {
+        e.target.value = formatWhatsapp(e.target.value);
+      });
+
+      els.produtoNome.addEventListener('change', refreshSaleSelectors);
+      els.produtoTipo.addEventListener('change', refreshSaleSelectors);
+      els.produtoCor.addEventListener('change', refreshSaleSelectors);
+      els.produtoTamanho.addEventListener('change', refreshSaleSelectors);
+
       els.filtroEstoque.addEventListener('input', renderStock);
       els.filtroVendas.addEventListener('input', renderSales);
-      document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => switchSection(btn.dataset.target)));
+
+      document.querySelectorAll('.nav-btn').forEach(btn =>
+        btn.addEventListener('click', () => switchSection(btn.dataset.target))
+      );
     }
 
     onAuthStateChanged(auth, async user => {
       clearMessages();
-      if(!user){ currentUser = null; currentProfile = { role:'vendedor', nome:'' }; els.loginScreen.classList.remove('hidden'); els.appScreen.classList.add('hidden'); return; }
+
+      if(!user){
+        currentUser = null;
+        currentProfile = { role:'vendedor', nome:'' };
+        stockCache = [];
+        salesCache = [];
+        availableSaleItems = [];
+        els.loginScreen.classList.remove('hidden');
+        els.appScreen.classList.add('hidden');
+        return;
+      }
+
       try{
         currentUser = user;
         currentProfile = await getOrCreateUserProfile(user);
+
         els.chipUsuario.textContent = user.email;
         els.chipRole.textContent = currentProfile.role;
         els.previewPerfil.textContent = currentProfile.role;
-        updateSalePreview();
+
         els.loginScreen.classList.add('hidden');
         els.appScreen.classList.remove('hidden');
+
         switchSection('secaoNovaVenda');
         await Promise.all([loadStock(), loadSales()]);
-      }catch(error){ showBox(els.loginError, traduzErro(error)); }
+      }catch(error){
+        showBox(els.loginError, traduzErro(error));
+      }
     });
 
     bindEvents();
